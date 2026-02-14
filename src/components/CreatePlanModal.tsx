@@ -16,8 +16,6 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<'sBTC' | 'STX'>('sBTC');
   const [interval, setInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
-  const [description, setDescription] = useState('');
-  const [perks, setPerks] = useState<string[]>(['']);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,8 +41,6 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
           currency,
           interval,
           planName,
-          description,
-          perks: perks.filter((p) => p.trim() !== ''),
         }),
       });
 
@@ -63,8 +59,8 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Subscription Plan</CardTitle>
           <CardDescription>
@@ -79,59 +75,8 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
                 type="text"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
-                placeholder="Pro Plan"
+                placeholder="Basic Plan"
               />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what subscribers will get with this plan..."
-                className="w-full p-2 border rounded-md text-sm min-h-[80px] resize-y bg-background"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">What&apos;s Included</label>
-              <p className="text-xs text-muted-foreground mb-2">List the perks subscribers will receive</p>
-              <div className="space-y-2">
-                {perks.map((perk, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={perk}
-                      onChange={(e) => {
-                        const updated = [...perks];
-                        updated[index] = e.target.value;
-                        setPerks(updated);
-                      }}
-                      placeholder={`Perk ${index + 1}, e.g. "Exclusive content access"`}
-                    />
-                    {perks.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPerks(perks.filter((_, i) => i !== index))}
-                        className="shrink-0 text-red-500 hover:text-red-700"
-                      >
-                        ✕
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPerks([...perks, ''])}
-                  className="w-full"
-                >
-                  + Add Perk
-                </Button>
-              </div>
             </div>
 
             <div>
