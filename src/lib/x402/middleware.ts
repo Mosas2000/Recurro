@@ -14,8 +14,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  X402PaymentVerifier,
-  networkToCAIP2,
   STXtoMicroSTX,
   STACKS_NETWORKS,
   X402_HEADERS,
@@ -26,10 +24,10 @@ import type { X402RouteConfig, PaymentRequiredResponse, PaymentPayload } from '.
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const DEFAULT_FACILITATOR_URL =
-  process.env.NEXT_PUBLIC_X402_FACILITATOR_URL ??
-  process.env.X402_FACILITATOR_URL ??
-  'https://x402-backend-7eby.onrender.com';
+const STACKS_API =
+  process.env.STACKS_API_URL ??
+  process.env.NEXT_PUBLIC_STACKS_API_URL ??
+  'https://api.testnet.hiro.so';
 
 /* ------------------------------------------------------------------ */
 /*  Public helpers                                                     */
@@ -57,9 +55,6 @@ export function withX402Paywall(
     settlement: { success: boolean; payer?: string; transaction?: string; network?: string } | null,
   ) => Promise<NextResponse>,
 ) {
-  const facilitatorUrl = config.facilitatorUrl ?? DEFAULT_FACILITATOR_URL;
-  const verifier = new X402PaymentVerifier(facilitatorUrl);
-
   // Normalise network to CAIP-2
   const caip2 =
     config.network === 'testnet'
@@ -97,21 +92,20 @@ export function withX402Paywall(
         );
       }
 
-      /* ---- 3. Settle via facilitator ---- */
-      const paymentRequirements = {
-        scheme: 'exact' as const,
-        network: caip2,
-        amount,
-        asset,
-        payTo: config.payTo,
-        maxTimeoutSeconds: 300,
-      };
+      /* ---- 3. Settle: broadcast the signed tx directly to Stacks API ---- */
+      const signedTxHex = paymentPayload.payload?.transaction;
+      if (!signedTxHex) {
+        return NextResponse.json(
+          { error: 'invalid_payload', message: 'No signed transaction in payment payload' },
+          { status: 400 },
+        );
+      }
 
-      const settlement = await verifier.settle(paymentPayload as any, { paymentRequirements } as any);
+      const settlement = await broadcastAndSettle(signedTxHex, caip2);
 
       if (!settlement.success) {
-        const res = send402(req, config, caip2, asset, amount);
-        return res;
+        console.error('x402 settlement failed:', settlement.errorReason);
+        return send402(req, config, caip2, asset, amount);
       }
 
       /* ---- 4. Success – call the actual handler ---- */
@@ -180,3 +174,58 @@ function send402(
     },
   });
 }
+
+/** Convert a hex string (with or without 0x prefix) to Uint8Array */
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+/**
+ * Broadcast a signed transaction to the Stacks network and return settlement info.
+ * This replaces the external facilitator – we talk directly to the Stacks API.
+ */
+async function broadcastAndSettle(
+  signedTxHex: string,
+  network: string,
+): Promise<{ success: boolean; payer?: string; transaction?: string; network?: string; errorReason?: string }> {
+  try {
+    const txBytes = hexToBytes(signedTxHex);
+    const broadcastRes = await fetch(`${STACKS_API}/v2/transactions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: Buffer.from(txBytes),
+    });
+
+    if (!broadcastRes.ok) {
+      const errText = await broadcastRes.text();
+      console.error('[x402 settle] broadcast error:', broadcastRes.status, errText);
+      return { success: false, errorReason: `broadcast_failed: ${errText}`, network };
+    }
+
+    const txidRaw = await broadcastRes.text();
+    const txid = txidRaw.replace(/"/g, '').trim();
+
+    // Try to get the sender address from the mempool
+    let payer = '';
+    try {
+      await new Promise(r => setTimeout(r, 1000));
+      const infoRes = await fetch(`${STACKS_API}/extended/v1/tx/${txid}`);
+      if (infoRes.ok) {
+        const info = await infoRes.json();
+        payer = info.sender_address ?? '';
+      }
+    } catch {
+      // Non-critical
+    }
+
+    return { success: true, payer, transaction: txid, network };
+  } catch (err: any) {
+    return { success: false, errorReason: String(err?.message ?? err), network };
+  }
+}
+
