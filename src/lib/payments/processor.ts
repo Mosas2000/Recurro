@@ -1,12 +1,12 @@
 import { subscriptionsStore, paymentsStore, Subscription, Payment } from '@/lib/db/schema';
-import { X402Client } from '@/lib/x402/client';
+import { X402ServerVerifier } from '@/lib/x402/client';
 import { PaymentResult, PaymentStatus } from '@/types/payment';
 
 export class PaymentProcessor {
-  private x402Client: X402Client;
+  private verifier: X402ServerVerifier;
 
   constructor(networkType: 'testnet' | 'mainnet' = 'testnet') {
-    this.x402Client = new X402Client(networkType);
+    this.verifier = new X402ServerVerifier();
   }
 
   async processSubscriptionPayment(subscriptionId: string): Promise<PaymentResult> {

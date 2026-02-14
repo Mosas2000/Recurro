@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Wallet, Check } from 'lucide-react';
+import { Wallet, Check, Loader2, Zap } from 'lucide-react';
 import { getWalletConnection } from '@/lib/stacks/wallet';
 
 interface SubscribeButtonProps {
@@ -24,6 +24,7 @@ export function SubscribeButton({
 }: SubscribeButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState('');
 
   const handleSubscribe = async () => {
     const wallet = getWalletConnection();
@@ -34,13 +35,14 @@ export function SubscribeButton({
     }
 
     setIsProcessing(true);
+    setPaymentStatus('Initiating x402 payment…');
 
     try {
-      const response = await fetch('/api/subscriptions/create', {
+      // Step 1: Hit the x402-gated subscribe endpoint – expect a 402
+      setPaymentStatus('Requesting payment details (HTTP 402)…');
+      const initial = await fetch('/api/x402/subscribe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           creatorAddress,
           subscriberAddress: wallet.address,
@@ -51,15 +53,83 @@ export function SubscribeButton({
         }),
       });
 
-      if (response.ok) {
+      if (initial.status === 402) {
+        // Step 2: Parse the 402 requirements
+        const requirements = await initial.json();
+        setPaymentStatus('Signing STX transfer via wallet…');
+
+        // Step 3: Sign the transaction through the wallet
+        const { request: walletRequest } = await import('@stacks/connect');
+        const requirement = requirements.accepts?.[0];
+
+        if (!requirement) {
+          throw new Error('No payment requirements received');
+        }
+
+        // Use stx_transferStx to sign the transfer (wallet popup)
+        const result: any = await walletRequest('stx_transferStx', {
+          recipient: requirement.payTo,
+          amount: requirement.amount,
+          memo: `x402:recurro:${planName}`.substring(0, 34),
+          network: wallet.network === 'testnet' ? 'testnet' : 'mainnet',
+        });
+
+        const signedTxHex: string =
+          result.transaction ?? result.txRaw ?? result.result?.transaction ?? '';
+
+        if (!signedTxHex) {
+          throw new Error('Wallet did not return a signed transaction');
+        }
+
+        // Step 4: Build x402 payment payload and retry
+        setPaymentStatus('Settling payment via x402 facilitator…');
+        const paymentPayload = {
+          x402Version: 2,
+          resource: requirements.resource,
+          accepted: requirement,
+          payload: { transaction: signedTxHex },
+        };
+
+        const encoded = btoa(JSON.stringify(paymentPayload));
+
+        const settled = await fetch('/api/x402/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'payment-signature': encoded,
+          },
+          body: JSON.stringify({
+            creatorAddress,
+            subscriberAddress: wallet.address,
+            amount,
+            currency,
+            interval,
+            planName,
+          }),
+        });
+
+        if (settled.ok) {
+          const data = await settled.json();
+          setPaymentStatus('');
+          setIsSubscribed(true);
+          onSuccess?.();
+        } else {
+          const err = await settled.json().catch(() => ({}));
+          throw new Error(err.message ?? `Settlement failed: ${settled.status}`);
+        }
+      } else if (initial.ok) {
+        // Somehow succeeded without 402 (e.g. payment was already in headers)
+        setPaymentStatus('');
         setIsSubscribed(true);
         onSuccess?.();
       } else {
-        alert('Failed to create subscription');
+        const err = await initial.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Subscription request failed');
       }
-    } catch (error) {
-      console.error('Error creating subscription:', error);
-      alert('Failed to create subscription');
+    } catch (error: any) {
+      console.error('x402 subscription error:', error);
+      setPaymentStatus('');
+      alert(error.message || 'Failed to process payment');
     } finally {
       setIsProcessing(false);
     }
@@ -69,19 +139,30 @@ export function SubscribeButton({
     return (
       <Button disabled className="w-full">
         <Check className="mr-2 h-4 w-4" />
-        Subscribed
+        Subscribed via x402
       </Button>
     );
   }
 
   return (
-    <Button
-      onClick={handleSubscribe}
-      disabled={isProcessing}
-      className="w-full bg-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/90"
-    >
-      <Wallet className="mr-2 h-4 w-4" />
-      {isProcessing ? 'Processing...' : 'Subscribe Now'}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        onClick={handleSubscribe}
+        disabled={isProcessing}
+        className="w-full bg-[var(--brand-accent)] hover:bg-[var(--brand-accent)]/90"
+      >
+        {isProcessing ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Zap className="mr-2 h-4 w-4" />
+        )}
+        {isProcessing ? 'Processing…' : 'Pay with x402'}
+      </Button>
+      {paymentStatus && (
+        <p className="text-xs text-muted-foreground text-center animate-pulse">
+          {paymentStatus}
+        </p>
+      )}
+    </div>
   );
 }
