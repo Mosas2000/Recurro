@@ -282,26 +282,88 @@ export default function PaymentsPage() {
                 )}
 
                 {paymentResult && (
-                  <div className="p-6 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-4">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <h4 className="font-semibold text-green-800 dark:text-green-200">
-                        Payment Successful &mdash; Content Unlocked
-                      </h4>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <h4 className="font-semibold text-green-800 dark:text-green-200">
+                          Payment Successful &mdash; Content Unlocked
+                        </h4>
+                      </div>
+                      <p className="text-sm text-green-700 dark:text-green-300">
+                        {paymentResult.message}
+                      </p>
+                      {paymentResult.payment?.transaction && (
+                        <a
+                          href={`https://explorer.stacks.co/txid/${paymentResult.payment.transaction}?chain=testnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm text-[var(--brand-accent)] hover:underline font-medium mt-2"
+                        >
+                          View transaction on Stacks Explorer
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
                     </div>
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      {paymentResult.message}
-                    </p>
-                    {paymentResult.payment?.transaction && (
-                      <a
-                        href={`https://explorer.stacks.co/txid/${paymentResult.payment.transaction}?chain=testnet`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm text-[var(--brand-accent)] hover:underline font-medium"
-                      >
-                        View transaction on Stacks Explorer
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
+
+                    {/* Render the analytics data */}
+                    {paymentResult.data && (
+                      <div className="space-y-4">
+                        {/* Overview Stats */}
+                        {paymentResult.data.overview && (
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {Object.entries(paymentResult.data.overview).map(([key, value]) => (
+                              <div key={key} className="p-3 rounded-lg bg-muted/50 text-center">
+                                <p className="text-xs text-muted-foreground capitalize">
+                                  {key.replace(/([A-Z])/g, ' $1').trim()}
+                                </p>
+                                <p className="text-lg font-bold mt-1">{String(value)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Recent Plans */}
+                        {paymentResult.data.recentPlans && paymentResult.data.recentPlans.length > 0 && (
+                          <div>
+                            <h5 className="text-sm font-semibold mb-2">Recent Plans</h5>
+                            <div className="space-y-2">
+                              {paymentResult.data.recentPlans.map((plan: any, i: number) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 text-sm">
+                                  <div>
+                                    <p className="font-medium">{plan.name}</p>
+                                    <p className="text-xs text-muted-foreground">{plan.interval} &middot; Created {plan.created}</p>
+                                  </div>
+                                  <span className="font-mono font-semibold">{plan.price}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Insights */}
+                        {paymentResult.data.insights && (
+                          <div>
+                            <h5 className="text-sm font-semibold mb-2">Insights</h5>
+                            <div className="grid grid-cols-2 gap-3">
+                              {Object.entries(paymentResult.data.insights).map(([key, value]) => (
+                                <div key={key} className="p-3 rounded-lg border text-sm">
+                                  <p className="text-xs text-muted-foreground capitalize">
+                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                  </p>
+                                  <p className="font-semibold mt-0.5">{String(value)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {paymentResult.data.generatedAt && (
+                          <p className="text-xs text-muted-foreground text-right">
+                            Generated {new Date(paymentResult.data.generatedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

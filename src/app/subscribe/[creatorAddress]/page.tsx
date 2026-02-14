@@ -14,6 +14,7 @@ import { WalletConnect } from '@/components/WalletConnect';
 import { getWalletConnection } from '@/lib/stacks/wallet';
 import type { Subscription } from '@/lib/db/schema';
 import type { WalletConnection as WalletConnectionType } from '@/types/wallet';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function SubscribePage({
   params,
@@ -123,6 +124,21 @@ export default function SubscribePage({
                           : 'day'}
                     </span>
                   </div>
+                  {plan.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {plan.description}
+                    </p>
+                  )}
+                  {plan.perks && plan.perks.length > 0 && (
+                    <ul className="space-y-1.5">
+                      {plan.perks.map((perk, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                          <span>{perk}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <SubscribeButton
                     planName={plan.planName ?? 'Plan'}
                     amount={plan.amount}

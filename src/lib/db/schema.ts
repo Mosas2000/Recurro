@@ -12,6 +12,8 @@ export interface Subscription {
   nextPaymentDate: number;
   createdAt: number;
   planName?: string;
+  description?: string;
+  perks?: string[];
 }
 
 export interface Payment {

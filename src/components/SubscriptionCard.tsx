@@ -26,7 +26,9 @@ export function SubscriptionCard({ subscription, onPause, onResume }: Subscripti
           {subscription.planName || 'Subscription Plan'}
         </CardTitle>
         <CardDescription>
-          {truncateAddress(subscription.subscriberAddress)}
+          {subscription.subscriberAddress === 'placeholder'
+            ? subscription.description || 'No description'
+            : truncateAddress(subscription.subscriberAddress)}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -57,6 +59,20 @@ export function SubscriptionCard({ subscription, onPause, onResume }: Subscripti
           </div>
         </div>
         
+        {subscription.perks && subscription.perks.length > 0 && (
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Includes:</p>
+            <ul className="space-y-1">
+              {subscription.perks.map((perk, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  <span>{perk}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="mt-4 flex gap-2">
           {subscription.status === 'active' && onPause && (
             <Button variant="outline" size="sm" onClick={onPause}>

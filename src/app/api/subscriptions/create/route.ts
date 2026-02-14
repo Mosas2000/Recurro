@@ -4,7 +4,7 @@ import { subscriptionsStore, Subscription, SubscriptionInterval } from '@/lib/db
 export async function POST(request: NextRequest) {
   const body = await request.json();
   
-  const { creatorAddress, subscriberAddress, amount, currency, interval, planName } = body;
+  const { creatorAddress, subscriberAddress, amount, currency, interval, planName, description, perks } = body;
 
   if (!creatorAddress || !subscriberAddress || !amount || !currency || !interval) {
     return NextResponse.json(
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
     nextPaymentDate,
     createdAt: Date.now(),
     planName,
+    description: description || '',
+    perks: perks || [],
   };
 
   subscriptionsStore.set(subscriptionId, subscription);
