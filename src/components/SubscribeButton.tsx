@@ -35,11 +35,11 @@ export function SubscribeButton({
     }
 
     setIsProcessing(true);
-    setPaymentStatus('Initiating x402 payment…');
+    setPaymentStatus('Starting payment…');
 
     try {
       // Step 1: Hit the x402-gated subscribe endpoint – expect a 402
-      setPaymentStatus('Requesting payment details (HTTP 402)…');
+      setPaymentStatus('Preparing your payment…');
       const initial = await fetch('/api/x402/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,7 +56,7 @@ export function SubscribeButton({
       if (initial.status === 402) {
         // Step 2: Parse the 402 requirements
         const requirements = await initial.json();
-        setPaymentStatus('Signing STX transfer via wallet…');
+        setPaymentStatus('Please confirm in your wallet…');
 
         // Step 3: Sign the transaction through the wallet
         const { request: walletRequest } = await import('@stacks/connect');
@@ -82,7 +82,7 @@ export function SubscribeButton({
         }
 
         // Step 4: Build x402 payment payload and retry
-        setPaymentStatus('Settling payment via x402 facilitator…');
+        setPaymentStatus('Processing your payment…');
         const paymentPayload = {
           x402Version: 2,
           resource: requirements.resource,
@@ -139,7 +139,7 @@ export function SubscribeButton({
     return (
       <Button disabled className="w-full">
         <Check className="mr-2 h-4 w-4" />
-        Subscribed via x402
+        Subscribed
       </Button>
     );
   }
@@ -156,7 +156,7 @@ export function SubscribeButton({
         ) : (
           <Zap className="mr-2 h-4 w-4" />
         )}
-        {isProcessing ? 'Processing…' : 'Pay with x402'}
+        {isProcessing ? 'Processing…' : 'Subscribe Now'}
       </Button>
       {paymentStatus && (
         <p className="text-xs text-muted-foreground text-center animate-pulse">

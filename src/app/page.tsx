@@ -11,7 +11,7 @@ export default function HomePage() {
           <div className="text-2xl font-bold">Recurro</div>
           <nav className="flex gap-4">
             <Link href="/x402">
-              <Button variant="ghost">x402 Demo</Button>
+              <Button variant="ghost">Payments</Button>
             </Link>
             <Link href="/dashboard">
               <Button variant="ghost">Dashboard</Button>
@@ -44,7 +44,7 @@ export default function HomePage() {
           <Link href="/x402">
             <Button size="lg" variant="outline">
               <Zap className="mr-2 h-4 w-4" />
-              Try x402 Demo
+              Try It Now
             </Button>
           </Link>
         </div>
@@ -94,12 +94,12 @@ export default function HomePage() {
           <Card>
             <CardHeader>
               <Shield className="h-12 w-12 text-[var(--brand-accent)] mb-4" />
-              <CardTitle>Facilitator Pattern</CardTitle>
+              <CardTitle>Secure Settlement</CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Client signs, server settles via facilitator. Atomic payments
-                with no double-spending and reliable confirmation.
+                Every payment is cryptographically signed and settled on-chain.
+                Zero fraud, no double-spending, and instant confirmation.
               </CardDescription>
             </CardContent>
           </Card>
@@ -123,13 +123,13 @@ export default function HomePage() {
               },
               {
                 step: '3',
-                title: 'HTTP 402 Paywall',
-                desc: 'Subscription endpoints return 402 with payment requirements. The x402 protocol handles the rest.',
+                title: 'Automatic Billing',
+                desc: 'Payment requirements are handled seamlessly through the x402 protocol. No manual invoicing needed.',
               },
               {
                 step: '4',
                 title: 'On-Chain Settlement',
-                desc: 'The facilitator broadcasts the signed transaction and confirms payment on Stacks.',
+                desc: 'Your signed transaction is broadcast to the Stacks network and confirmed on-chain.',
               },
             ].map((item) => (
               <Card key={item.step} className="bg-background">
@@ -165,7 +165,7 @@ export default function HomePage() {
           <Link href="/x402">
             <Button size="lg" variant="outline">
               <Zap className="mr-2 h-4 w-4" />
-              x402 Demo
+              Try It Now
             </Button>
           </Link>
         </div>
