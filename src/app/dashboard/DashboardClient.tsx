@@ -214,13 +214,13 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* subscriptions */}
-        <h2 className="text-2xl font-bold mb-4">Subscriptions</h2>
+        {/* plans & subscriptions */}
+        <h2 className="text-2xl font-bold mb-4">Your Plans</h2>
 
         {subscriptions.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
-              No subscriptions yet. Create your first plan to get started.
+              No plans yet. Create your first plan to get started.
             </CardContent>
           </Card>
         ) : (

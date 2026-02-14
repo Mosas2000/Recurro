@@ -75,7 +75,8 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
                 type="text"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
-                placeholder="Basic Plan"
+                placeholder="e.g. Pro Plan"
+                required
               />
             </div>
 
@@ -84,9 +85,11 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
               <Input
                 type="number"
                 step="0.0001"
+                min="0.0001"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.0001"
+                placeholder="Enter amount"
+                required
               />
             </div>
 

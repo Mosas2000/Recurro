@@ -10,6 +10,14 @@ interface SubscriptionCardProps {
   onResume?: () => void;
 }
 
+const planColors = [
+  'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+  'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+  'bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200',
+];
+
 export function SubscriptionCard({ subscription, onPause, onResume }: SubscriptionCardProps) {
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString();
@@ -19,17 +27,29 @@ export function SubscriptionCard({ subscription, onPause, onResume }: Subscripti
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  // Assign a consistent color based on the plan name
+  const colorIndex = (subscription.planName || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % planColors.length;
+
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-lg">
-          {subscription.planName || 'Subscription Plan'}
-        </CardTitle>
-        <CardDescription>
-          {subscription.subscriberAddress === 'placeholder'
-            ? subscription.description || 'No description'
-            : truncateAddress(subscription.subscriberAddress)}
+        <div className="flex items-center justify-between mb-1">
+          <CardTitle className="text-lg">
+            {subscription.planName || 'Subscription Plan'}
+          </CardTitle>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${planColors[colorIndex]}`}>
+            {subscription.interval}
+          </span>
+        </div>
+        <CardDescription className="text-base font-semibold">
+          {subscription.amount} {subscription.currency}
+          <span className="text-muted-foreground font-normal text-sm"> / {subscription.interval}</span>
         </CardDescription>
+        {subscription.subscriberAddress !== 'placeholder' && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Subscriber: {truncateAddress(subscription.subscriberAddress)}
+          </p>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-2 text-sm">
