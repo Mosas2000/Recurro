@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscriptionsStore, Subscription, SubscriptionInterval } from '@/lib/db/schema';
 import { getNextPaymentDate } from '@/lib/payments/processor';
-
-/** Validate a Stacks address format (testnet ST… or mainnet SP…). */
-function isValidStacksAddress(address: string): boolean {
-  return /^S[PT][A-Z0-9]{38,40}$/i.test(address);
-}
+import { isValidStacksAddress } from '@/lib/utils';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();

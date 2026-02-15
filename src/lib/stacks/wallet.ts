@@ -115,12 +115,4 @@ export function getWalletConnection(): WalletConnection | null {
   }
 }
 
-/** Return the stored address, or null. */
-export function getAddress(): string | null {
-  return getWalletConnection()?.address ?? null;
-}
 
-/** Quick boolean check. */
-export function isWalletConnected(): boolean {
-  return getWalletConnection()?.connected === true;
-}

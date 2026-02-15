@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Recurro – Bitcoin-Native Recurring Payments",
   description:
-    "Accept sBTC and STX subscriptions on the Stacks blockchain with zero middlemen.",
+    "Accept STX subscriptions on the Stacks blockchain with zero middlemen. Powered by the x402 payment protocol.",
 };
 
 export default function RootLayout({

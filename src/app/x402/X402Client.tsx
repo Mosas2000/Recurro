@@ -263,7 +263,7 @@ export default function PaymentsPage() {
                       </p>
                       {paymentResult.payment?.transaction && (
                         <a
-                          href={`https://explorer.stacks.co/txid/${paymentResult.payment.transaction}?chain=testnet`}
+                          href={`https://explorer.hiro.so/txid/${paymentResult.payment.transaction}?chain=testnet`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-sm text-[var(--brand-accent)] hover:underline font-medium mt-2"

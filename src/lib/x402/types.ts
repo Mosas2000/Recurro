@@ -8,16 +8,12 @@
  *   - Facilitator pattern for transaction settlement
  */
 
-/** Token types accepted for payment */
-export type TokenType = 'STX';
-export type Currency = 'STX';
-
 /** Payment requirement returned in a 402 response */
 export interface PaymentRequirement {
   scheme: string;
   network: string;       // CAIP-2 format, e.g. "stacks:2147483648"
   amount: string;        // in atomic units (microSTX or satoshis)
-  asset: string;         // "STX" or "sBTC"
+  asset: string;         // e.g. "STX"
   payTo: string;         // creator's Stacks address
   maxTimeoutSeconds: number;
 }

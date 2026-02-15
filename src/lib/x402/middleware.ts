@@ -18,6 +18,7 @@ import {
   STACKS_NETWORKS,
   X402_HEADERS,
 } from 'x402-stacks';
+import { hexToBytes } from '@/lib/utils';
 import type { X402RouteConfig, PaymentRequiredResponse, PaymentPayload } from './types';
 
 /* ------------------------------------------------------------------ */
@@ -173,16 +174,6 @@ function send402(
       [X402_HEADERS.PAYMENT_REQUIRED]: encoded,
     },
   });
-}
-
-/** Convert a hex string (with or without 0x prefix) to Uint8Array */
-function hexToBytes(hex: string): Uint8Array {
-  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
 }
 
 /**

@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { hexToBytes } from '@/lib/utils';
 
 const STACKS_API =
   process.env.STACKS_API_URL ?? 'https://api.testnet.hiro.so';
@@ -90,12 +91,3 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Convert a hex string (with or without 0x prefix) to Uint8Array */
-function hexToBytes(hex: string): Uint8Array {
-  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}

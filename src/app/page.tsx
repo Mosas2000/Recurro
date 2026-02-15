@@ -32,7 +32,7 @@ export default function HomePage() {
           Bitcoin-Native <span className="text-[var(--brand-accent)]">Recurring Payments</span>
         </h1>
         <p className="text-xl text-muted-foreground mt-6 mb-8 max-w-2xl mx-auto">
-          Accept STX &amp; sBTC subscriptions with zero middlemen. Payments settle
+          Accept STX subscriptions with zero middlemen. Every payment settles
           on-chain via the x402 payment protocol — no API keys, no intermediaries.
         </p>
         <div className="flex gap-4 justify-center">
@@ -75,7 +75,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                All payments settled on Bitcoin via sBTC &amp; STX. True
+                All payments settled on Stacks, anchored to Bitcoin. True
                 decentralization with the security of the Bitcoin network.
               </CardDescription>
             </CardContent>
@@ -122,7 +122,8 @@ export default function HomePage() {
               {
                 step: '2',
                 title: 'Create Plan',
-                desc: 'Set your pricing in STX or sBTC. Choose monthly, weekly, or daily billing intervals.',
+                desc: 'Set your pricing in STX. Choose monthly, weekly, or daily billing intervals.',
+
               },
               {
                 step: '3',
@@ -186,7 +187,7 @@ export default function HomePage() {
             >
               x402-stacks
             </a>{' '}
-            on Stacks. Powered by sBTC &amp; STX.
+            on Stacks. Powered by STX.
           </p>
         </div>
       </footer>
