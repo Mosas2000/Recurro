@@ -15,8 +15,22 @@ import { CreatePlanModal } from '@/components/CreatePlanModal';
 import { WalletConnect } from '@/components/WalletConnect';
 import { getWalletConnection } from '@/lib/stacks/wallet';
 import type { Subscription } from '@/lib/db/schema';
-import { Users, TrendingUp, Zap, Copy, Check } from 'lucide-react';
+import { Users, TrendingUp, Zap, Copy, Check, ArrowDownLeft, ArrowUpRight, ExternalLink, Clock } from 'lucide-react';
 import type { WalletConnection as WalletConnectionType } from '@/types/wallet';
+
+interface PaymentRecord {
+  id: string;
+  type: 'incoming' | 'outgoing';
+  amount: number;
+  currency: string;
+  status: 'pending' | 'completed' | 'failed';
+  transactionId: string;
+  timestamp: number;
+  planName: string;
+  interval: string;
+  counterparty: string;
+  subscriptionId: string;
+}
 
 export default function DashboardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -25,6 +39,7 @@ export default function DashboardPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [stats, setStats] = useState({
     totalSubscribers: 0,
     monthlyRevenue: 0,
@@ -59,6 +74,19 @@ export default function DashboardPage() {
         monthlyRevenue,
         activeSubscriptions: activeSubs.length,
       });
+
+      // Fetch transaction history
+      try {
+        const payRes = await fetch(
+          `/api/payments?address=${encodeURIComponent(address)}`
+        );
+        if (payRes.ok) {
+          const payData: PaymentRecord[] = await payRes.json();
+          setPayments(payData);
+        }
+      } catch {
+        // Non-critical — dashboard still works without history
+      }
     } catch (err) {
       console.error('Failed to load subscriptions:', err);
     } finally {
@@ -260,6 +288,112 @@ export default function DashboardPage() {
               />
             ))}
           </div>
+        )}
+
+        {/* ---- Transaction History ---- */}
+        <h2 className="text-2xl font-bold mt-12 mb-4">Transaction History</h2>
+
+        {payments.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <Clock className="h-8 w-8 mx-auto mb-3 opacity-50" />
+              <p>No transactions yet. Payments will appear here once subscribers start paying.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-0">
+              <div className="divide-y">
+                {payments.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between gap-4 px-4 py-3"
+                  >
+                    {/* icon + info */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                          tx.type === 'incoming'
+                            ? 'bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400'
+                            : 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400'
+                        }`}
+                      >
+                        {tx.type === 'incoming' ? (
+                          <ArrowDownLeft className="h-4 w-4" />
+                        ) : (
+                          <ArrowUpRight className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.planName}{' '}
+                          <span className="text-xs text-muted-foreground font-normal">
+                            · {tx.interval}
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {tx.type === 'incoming' ? 'From' : 'To'}{' '}
+                          {tx.counterparty.slice(0, 8)}…{tx.counterparty.slice(-4)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* amount + status */}
+                    <div className="text-right shrink-0">
+                      <p
+                        className={`text-sm font-semibold ${
+                          tx.type === 'incoming'
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-foreground'
+                        }`}
+                      >
+                        {tx.type === 'incoming' ? '+' : '-'}
+                        {tx.amount} {tx.currency}
+                      </p>
+                      <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                        <span
+                          className={`inline-block h-1.5 w-1.5 rounded-full ${
+                            tx.status === 'completed'
+                              ? 'bg-green-500'
+                              : tx.status === 'pending'
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
+                          }`}
+                        />
+                        <span className="text-xs text-muted-foreground capitalize">
+                          {tx.status}
+                        </span>
+                        {tx.transactionId && (
+                          <a
+                            href={`https://explorer.hiro.so/txid/${tx.transactionId}?chain=testnet`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-[var(--brand-accent)] transition-colors"
+                            title="View on explorer"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* date */}
+                    <div className="hidden sm:block text-xs text-muted-foreground whitespace-nowrap shrink-0 w-24 text-right">
+                      {new Date(tx.timestamp).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                      <br />
+                      {new Date(tx.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
 
