@@ -2,7 +2,7 @@
 
 **Bitcoin-Native Recurring Payments via x402-stacks**
 
-> 🏆 Built for the [DoraHacks x402 Stacks Challenge](https://dorahacks.io/hackathon/x402-stacks/detail)
+
 
 ---
 

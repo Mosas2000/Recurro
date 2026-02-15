@@ -1,18 +1,15 @@
 /**
- * x402 Client – Integration with the x402-stacks SDK
+ * x402 Client – Browser-safe helpers for the x402 payment flow
  *
- * Provides shared helpers for the x402 payment flow:
- *  - `performX402Payment()` – reusable 402→sign→settle flow used by
- *    SubscribeButton and X402Client
- *  - Re-exports from x402-stacks for convenience
+ * IMPORTANT: This file is imported by client components ('use client').
+ * We intentionally avoid `import … from 'x402-stacks'` here because the
+ * barrel export pulls in server-only modules (verifier, middleware, express
+ * interceptors) that reference Node.js built-ins (`crypto`, `Buffer`) and
+ * crash the browser bundle.  The constants we need are inlined instead.
+ *
+ * Server-side code (API routes, middleware.ts) can still import x402-stacks
+ * directly since those files only run in Node.
  */
-
-import {
-  X402PaymentVerifier,
-  STXtoMicroSTX,
-  STACKS_NETWORKS,
-  X402_HEADERS,
-} from 'x402-stacks';
 
 import type {
   PaymentRequiredResponse,
@@ -20,10 +17,23 @@ import type {
 } from './types';
 
 /* ====================================================================
- *  RE-EXPORTS for convenience
+ *  INLINED x402-stacks constants (avoids pulling server code into client)
  * ==================================================================*/
 
-export { STXtoMicroSTX, X402_HEADERS, STACKS_NETWORKS, X402PaymentVerifier };
+export const STACKS_NETWORKS = {
+  MAINNET: 'stacks:1',
+  TESTNET: 'stacks:2147483648',
+} as const;
+
+export const X402_HEADERS = {
+  PAYMENT_REQUIRED: 'payment-required',
+  PAYMENT_SIGNATURE: 'payment-signature',
+  PAYMENT_RESPONSE: 'payment-response',
+} as const;
+
+export function STXtoMicroSTX(stx: number): string {
+  return Math.round(stx * 1_000_000).toString();
+}
 
 /* ====================================================================
  *  SHARED x402 PAYMENT FLOW
