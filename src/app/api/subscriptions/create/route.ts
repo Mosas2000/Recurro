@@ -19,7 +19,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!isValidStacksAddress(creatorAddress) || !isValidStacksAddress(subscriberAddress)) {
+  // Validate the creator address (must be a real Stacks address).
+  // subscriberAddress may be "placeholder" or "plan_template" when creating a plan.
+  const isPlanTemplate = subscriberAddress === 'placeholder' || subscriberAddress === 'plan_template';
+  if (!isValidStacksAddress(creatorAddress) || (!isPlanTemplate && !isValidStacksAddress(subscriberAddress))) {
     return NextResponse.json(
       { error: 'Invalid Stacks address format' },
       { status: 400 }
