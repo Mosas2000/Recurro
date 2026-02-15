@@ -11,10 +11,7 @@
 
 import {
   X402PaymentVerifier,
-  createVerifier,
   STXtoMicroSTX,
-  microSTXtoSTX,
-  networkToCAIP2,
   STACKS_NETWORKS,
   X402_HEADERS,
 } from 'x402-stacks';
@@ -29,7 +26,7 @@ import type {
  *  RE-EXPORTS for convenience
  * ==================================================================*/
 
-export { STXtoMicroSTX, microSTXtoSTX, networkToCAIP2, X402_HEADERS, STACKS_NETWORKS };
+export { STXtoMicroSTX, X402_HEADERS, STACKS_NETWORKS };
 
 /* ====================================================================
  *  BROWSER-SIDE: handle a 402 response from our own API

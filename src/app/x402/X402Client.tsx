@@ -21,8 +21,6 @@ import {
   CheckCircle2,
   Loader2,
   Wallet,
-  CreditCard,
-  Globe,
 } from 'lucide-react';
 import type { WalletConnection as WalletConnectionType } from '@/types/wallet';
 

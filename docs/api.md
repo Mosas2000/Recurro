@@ -1,173 +1,137 @@
-# Recurro API Documentation
+# API Reference
 
-## Base URL
+## Subscriptions
 
-Development: `http://localhost:3000/api`
-Production: `https://recurro.app/api`
+### List Subscriptions
+```
+GET /api/subscriptions?creatorAddress=ST…&subscriberAddress=ST…
+```
+Both query parameters are optional. Returns all matching subscriptions.
 
-## Authentication
+**Response**: `Subscription[]`
 
-No authentication required for public endpoints. Wallet signature verification used for mutations.
+### Create Plan / Subscription
+```
+POST /api/subscriptions/create
+Content-Type: application/json
 
-## Endpoints
-
-### Create Subscription
-
-Create a new subscription plan.
-
-**Endpoint:** `POST /api/subscriptions/create`
-
-**Request Body:**
-```json
 {
-  "creatorAddress": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM",
-  "subscriberAddress": "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG",
-  "amount": 0.0001,
-  "currency": "sBTC",
+  "creatorAddress": "ST1PQH…",
+  "subscriberAddress": "plan_template",
+  "amount": 5.0,
+  "currency": "STX",
   "interval": "monthly",
-  "planName": "Basic Plan"
+  "planName": "Pro Plan"
 }
 ```
 
-**Response:**
+**Response** (201):
 ```json
 {
-  "id": "sub_1234567890_abcdefghi",
-  "creatorAddress": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM",
-  "subscriberAddress": "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG",
-  "amount": 0.0001,
-  "currency": "sBTC",
+  "id": "sub_1739000000000_abc123def",
+  "creatorAddress": "ST1PQH…",
+  "subscriberAddress": "plan_template",
+  "amount": 5,
+  "currency": "STX",
   "interval": "monthly",
   "status": "active",
-  "nextPaymentDate": 1735689600000,
-  "createdAt": 1733097600000,
-  "planName": "Basic Plan"
+  "nextPaymentDate": 1741592000000,
+  "createdAt": 1739000000000,
+  "planName": "Pro Plan"
 }
 ```
-
-**Status Codes:**
-- `201`: Subscription created successfully
-- `400`: Invalid request (missing fields or invalid amount)
-- `500`: Server error
 
 ### Get Subscription
+```
+GET /api/subscriptions/:id
+```
 
-Retrieve subscription details by ID.
+### Update Subscription Status
+```
+PUT /api/subscriptions/:id
+Content-Type: application/json
 
-**Endpoint:** `GET /api/subscriptions/[id]`
+{ "status": "paused" }
+```
+Only `status` can be updated. Valid values: `active`, `paused`, `cancelled`.
 
-**Response:**
-```json
+---
+
+## x402 Endpoints
+
+### Premium Content (Paywalled)
+```
+GET /api/x402/premium-content
+```
+
+**Without payment**: Returns HTTP 402 with `payment-required` header.
+
+**With payment** (include `payment-signature` header): Returns HTTP 200 with analytics data.
+
+**Price**: 0.001 STX
+
+### Subscribe via x402 (Paywalled)
+```
+POST /api/x402/subscribe
+Content-Type: application/json
+
 {
-  "id": "sub_1234567890_abcdefghi",
-  "creatorAddress": "ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM",
-  "subscriberAddress": "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG",
-  "amount": 0.0001,
-  "currency": "sBTC",
+  "creatorAddress": "ST…",
+  "subscriberAddress": "ST…",
+  "amount": 5.0,
+  "currency": "STX",
   "interval": "monthly",
-  "status": "active",
-  "nextPaymentDate": 1735689600000,
-  "createdAt": 1733097600000
+  "planName": "Pro"
 }
 ```
 
-**Status Codes:**
-- `200`: Success
-- `404`: Subscription not found
+First call returns 402. Retry with `payment-signature` header to complete.
 
-### Update Subscription
+### x402 Status (Free)
+```
+GET /api/x402/status
+```
+Returns x402 configuration, supported endpoints, and facilitator connectivity status.
 
-Update subscription status.
+---
 
-**Endpoint:** `PUT /api/subscriptions/[id]`
+## Payment Verification
 
-**Request Body:**
-```json
+### Verify Transaction
+```
+POST /api/payments/verify
+Content-Type: application/json
+
 {
-  "status": "paused"
+  "transactionId": "0xabc…",
+  "subscriptionId": "sub_…",
+  "amount": 5.0,
+  "currency": "STX"
 }
 ```
 
-**Response:**
-```json
-{
-  "id": "sub_1234567890_abcdefghi",
-  "status": "paused",
-  ...
-}
+Checks the Stacks API for transaction status and records the payment.
+
+---
+
+## Local Facilitator
+
+Reference implementation of the x402 facilitator pattern.
+
+### Settle
 ```
-
-**Status Codes:**
-- `200`: Updated successfully
-- `404`: Subscription not found
-- `400`: Invalid status value
-
-### Verify Payment
-
-Verify a payment transaction on-chain.
-
-**Endpoint:** `POST /api/payments/verify`
-
-**Request Body:**
-```json
-{
-  "transactionId": "0x1234567890abcdef1234567890abcdef12345678",
-  "subscriptionId": "sub_1234567890_abcdefghi",
-  "amount": 0.0001,
-  "currency": "sBTC"
-}
+POST /api/facilitator/settle
 ```
+Broadcasts a signed transaction to the Stacks network.
 
-**Response:**
-```json
-{
-  "verified": true,
-  "payment": {
-    "id": "pay_1234567890_abcdefghi",
-    "subscriptionId": "sub_1234567890_abcdefghi",
-    "transactionId": "0x1234567890abcdef1234567890abcdef12345678",
-    "amount": 0.0001,
-    "currency": "sBTC",
-    "status": "completed",
-    "timestamp": 1733097600000
-  }
-}
+### Verify
 ```
-
-**Status Codes:**
-- `200`: Verification complete
-- `400`: Missing required fields
-- `404`: Subscription not found
-
-## Rate Limiting
-
-Current limits (subject to change):
-- 100 requests per minute per IP
-- 1000 requests per hour per IP
-
-Rate limit headers:
+POST /api/facilitator/verify
 ```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1733097660
+Validates transaction payload structure.
+
+### Supported
 ```
-
-## Error Responses
-
-All errors follow this format:
-
-```json
-{
-  "error": "Error message description"
-}
+GET /api/facilitator/supported
 ```
-
-Common error codes:
-- `400`: Bad Request - Invalid input
-- `404`: Not Found - Resource doesn't exist
-- `429`: Too Many Requests - Rate limit exceeded
-- `500`: Internal Server Error
-
-## Webhooks
-
-Coming soon. Webhooks will notify you of payment events.
+Returns supported payment kinds (Stacks mainnet + testnet).

@@ -21,7 +21,7 @@ const NETWORK = (process.env.STACKS_NETWORK as 'testnet' | 'mainnet') ?? 'testne
 const FACILITATOR_URL =
   process.env.X402_FACILITATOR_URL ??
   process.env.NEXT_PUBLIC_X402_FACILITATOR_URL ??
-  'https://x402-backend-7eby.onrender.com';
+  'http://localhost:3000/api/facilitator';
 
 export async function GET() {
   // Try to reach the facilitator
@@ -31,7 +31,6 @@ export async function GET() {
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
-      const data = await res.json();
       facilitatorStatus = 'connected';
     } else {
       facilitatorStatus = `error (${res.status})`;
@@ -80,8 +79,8 @@ export async function GET() {
       '2. Server responds HTTP 402 + payment-required header (base64 JSON)',
       '3. Client decodes requirements, signs STX transfer via wallet',
       '4. Client retries with payment-signature header (base64 signed tx)',
-      '5. Server sends signed tx to facilitator /settle endpoint',
-      '6. Facilitator broadcasts tx, waits for confirmation',
+      '5. Server broadcasts signed tx directly to Stacks API (/v2/transactions)',
+      '6. On-chain confirmation, sender address resolved from mempool',
       '7. Server returns resource + payment-response header with tx details',
     ],
   });

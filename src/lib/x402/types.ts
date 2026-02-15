@@ -69,17 +69,4 @@ export interface X402RouteConfig {
   description?: string;
 }
 
-/** Legacy type aliases for backward compatibility */
-export interface PaymentRequest {
-  id: string;
-  amount: number;
-  currency: Currency;
-  recipient: string;
-  timestamp: number;
-}
 
-export interface PaymentVerification {
-  transactionId: string;
-  verified: boolean;
-  timestamp: number;
-}

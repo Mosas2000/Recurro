@@ -34,9 +34,19 @@ export async function PUT(
     );
   }
 
+  const { status } = body;
+
+  // Only allow updating the status field (active, paused, cancelled)
+  if (!status || !['active', 'paused', 'cancelled'].includes(status)) {
+    return NextResponse.json(
+      { error: 'Invalid or missing status. Must be: active, paused, or cancelled' },
+      { status: 400 }
+    );
+  }
+
   const updatedSubscription = {
     ...subscription,
-    ...body,
+    status,
   };
 
   subscriptionsStore.set(id, updatedSubscription);

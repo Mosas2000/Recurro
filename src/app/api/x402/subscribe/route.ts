@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     },
     async (_r, settlement) => {
       // Payment verified! Create the subscription
-      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Date.now();
       const day = 24 * 60 * 60 * 1000;
 
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       // Record the payment
       const payment: Payment = {
-        id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         subscriptionId,
         transactionId: settlement?.transaction ?? '',
         amount: Number(amount),

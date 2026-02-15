@@ -30,8 +30,8 @@ export const GET = withX402Paywall(
   async (_req, settlement) => {
     // Pull real data from the subscription store
     const allSubs = Array.from(subscriptionsStore.values());
-    const activeSubs = allSubs.filter((s) => s.status === 'active' && s.subscriberAddress !== 'placeholder');
-    const plans = allSubs.filter((s) => s.subscriberAddress === 'placeholder');
+    const activeSubs = allSubs.filter((s) => s.status === 'active' && s.subscriberAddress !== 'placeholder' && s.subscriberAddress !== 'plan_template');
+    const plans = allSubs.filter((s) => s.subscriberAddress === 'placeholder' || s.subscriberAddress === 'plan_template');
     const totalRevenue = activeSubs.reduce((sum, s) => sum + s.amount, 0);
     const pausedSubs = allSubs.filter((s) => s.status === 'paused');
 

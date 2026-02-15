@@ -2,261 +2,131 @@
 
 ## Overview
 
-This document explains how Recurro integrates with the x402-stacks protocol for Bitcoin-native recurring payments.
+Recurro implements the [x402 HTTP payment protocol](https://www.npmjs.com/package/x402-stacks) for Stacks, enabling API endpoints to require on-chain STX payments before returning a response. This follows the Coinbase x402 V2 specification with CAIP-2 network identifiers.
 
-## What is x402-stacks?
+## SDK Usage
 
-x402-stacks is a payment verification protocol built on Stacks that enables HTTP 402 Payment Required responses for Bitcoin payments via sBTC.
+### Installed Package
 
-## Integration Points
+```json
+"x402-stacks": "^2.0.1"
+```
 
-### 1. Payment Request Creation
+### Imports Used
 
-When a subscriber initiates a subscription, Recurro creates a payment request:
+**Server-side** (`src/lib/x402/middleware.ts`):
+```typescript
+import { STXtoMicroSTX, STACKS_NETWORKS, X402_HEADERS } from 'x402-stacks';
+```
+
+**Client library** (`src/lib/x402/client.ts`):
+```typescript
+import { X402PaymentVerifier, STXtoMicroSTX, STACKS_NETWORKS, X402_HEADERS } from 'x402-stacks';
+```
+
+### What Each Import Does
+
+| Import | Purpose |
+|---|---|
+| `STXtoMicroSTX` | Converts human-readable STX to microSTX (e.g., 0.001 → 1000) |
+| `STACKS_NETWORKS` | CAIP-2 network IDs (`stacks:1` mainnet, `stacks:2147483648` testnet) |
+| `X402_HEADERS` | Standard header names: `payment-required`, `payment-signature`, `payment-response` |
+| `X402PaymentVerifier` | Server-side class for verifying/settling x402 payments |
+
+## Implementation
+
+### `withX402Paywall()` Middleware
+
+Location: `src/lib/x402/middleware.ts`
+
+This is the core x402 implementation. It wraps any Next.js App Router handler with the 402 payment flow:
 
 ```typescript
-const x402Client = new X402Client('testnet');
-
-const paymentRequest = await x402Client.createPaymentRequest(
-  0.0001,
-  'sBTC',
-  creatorAddress
-);
-```
-
-**Payment Request Structure:**
-```typescript
-{
-  id: 'pr_1234567890_abcdefghi',
-  amount: 0.0001,
-  currency: 'sBTC',
-  recipient: 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM',
-  timestamp: 1733097600000
-}
-```
-
-### 2. Transaction Verification
-
-After a payment is broadcast to the Stacks network, x402 verifies it on-chain:
-
-```typescript
-const verified = await x402Client.verifyPayment(transactionId);
-
-if (verified) {
-  // Payment confirmed on-chain
-  // Update subscription status
-  // Schedule next payment
-}
-```
-
-**Verification Process:**
-1. Query Stacks API for transaction details
-2. Check transaction status is 'success'
-3. Verify amount matches expected value
-4. Verify recipient matches creator address
-5. Return verification result
-
-### 3. Transaction Details
-
-Get comprehensive transaction information:
-
-```typescript
-const details = await x402Client.getTransactionDetails(transactionId);
-
-console.log(details.tx_status);        // 'success' | 'pending' | 'failed'
-console.log(details.sender_address);   // Subscriber address
-console.log(details.block_height);     // Block number
-```
-
-## Payment Flow Diagram
-
-```
-┌──────────────┐                                    ┌──────────────┐
-│  Subscriber  │                                    │   Creator    │
-└──────┬───────┘                                    └──────┬───────┘
-       │                                                   │
-       │ 1. Click Subscribe                               │
-       │────────────────────────────────────────────────▶ │
-       │                                                   │
-       │ 2. Create Payment Request (x402)                │
-       │◀─────────────────────────────────────────────────│
-       │                                                   │
-       │ 3. Sign Transaction (Wallet)                    │
-       │──────────────┐                                   │
-       │              │                                   │
-       │              ▼                                   │
-       │    ┌──────────────────┐                         │
-       │    │ Stacks Blockchain│                         │
-       │    └──────────────────┘                         │
-       │              │                                   │
-       │ 4. Verify Payment (x402)                        │
-       │◀─────────────────────────────────────────────────│
-       │              │                                   │
-       │              ▼                                   │
-       │    ┌──────────────────┐                         │
-       │    │  Recurro Server  │                         │
-       │    │ (Update Status)  │                         │
-       │    └──────────────────┘                         │
-       │                                                   │
-       │ 5. Subscription Confirmed                        │
-       │◀─────────────────────────────────────────────────│
-       │                                                   │
-```
-
-## sBTC vs STX Payments
-
-### sBTC Payments
-
-sBTC is a Bitcoin-backed token on Stacks. Payments in sBTC provide:
-- Bitcoin's security guarantees
-- Faster finality than Bitcoin L1
-- Smart contract compatibility
-
-```typescript
-const paymentRequest = await x402Client.createPaymentRequest(
-  0.0001,
-  'sBTC',
-  creatorAddress
-);
-```
-
-### STX Payments
-
-STX is the native token of Stacks. Payments in STX offer:
-- Lower transaction fees
-- Faster confirmation times
-- Direct Stacks ecosystem integration
-
-```typescript
-const paymentRequest = await x402Client.createPaymentRequest(
-  10,
-  'STX',
-  creatorAddress
-);
-```
-
-## Security Considerations
-
-### On-Chain Verification
-
-All payments are verified on-chain before being recorded:
-
-```typescript
-async verifyPaymentDetails(
-  transactionId: string,
-  expectedAmount: number,
-  expectedRecipient: string
-): Promise<PaymentVerification> {
-  const transaction = await this.getTransactionDetails(transactionId);
-  
-  const verified = 
-    transaction.tx_status === 'success' &&
-    transaction.sender_address !== expectedRecipient;
-
-  return { transactionId, verified, timestamp: Date.now() };
-}
-```
-
-### Idempotency
-
-Payment verification is idempotent. The same transaction ID can be verified multiple times without side effects.
-
-### Error Handling
-
-```typescript
-try {
-  const verified = await x402Client.verifyPayment(txId);
-} catch (error) {
-  if (error instanceof NetworkError) {
-    // Retry logic
-  } else if (error instanceof ValidationError) {
-    // Invalid transaction ID
+export const GET = withX402Paywall(
+  {
+    amount: STXtoMicroSTX(0.001),    // 1000 microSTX
+    payTo: 'ST1PQH…',               // recipient address
+    network: 'testnet',
+    asset: 'STX',
+    description: 'Premium content',
+  },
+  async (req, settlement) => {
+    // settlement.payer = sender address
+    // settlement.transaction = txid
+    return NextResponse.json({ data: '…' });
   }
-}
+);
 ```
 
-## Testing on Testnet
+**Flow:**
 
-### 1. Get Testnet Tokens
+1. Check for `payment-signature` header (using `X402_HEADERS.PAYMENT_SIGNATURE`)
+2. If missing → return HTTP 402 with `payment-required` header containing base64-encoded payment requirements
+3. If present → decode base64 → extract signed transaction hex → broadcast to Stacks API
+4. On successful broadcast → call the handler with settlement info
+5. Attach `payment-response` header to the response
 
-Visit the [Stacks Testnet Faucet](https://explorer.hiro.so/sandbox/faucet?chain=testnet) to get free testnet STX.
+### Client-Side Flow
 
-### 2. Configure Network
+Location: `src/lib/x402/client.ts` → `handleX402Payment()`
+Also implemented inline in: `src/app/x402/X402Client.tsx`, `src/components/SubscribeButton.tsx`
 
 ```typescript
-const x402Client = new X402Client('testnet');
+// 1. Initial request → receives 402
+const res = await fetch('/api/x402/premium-content');
+// res.status === 402
+
+// 2. Parse payment requirements
+const requirements = await res.json();
+// { x402Version: 2, accepts: [{ payTo, amount, network, ... }] }
+
+// 3. Sign STX transfer via wallet
+const result = await walletRequest('stx_transferStx', {
+  recipient: requirement.payTo,
+  amount: requirement.amount,
+  network: 'testnet',
+});
+
+// 4. Build x402 payload and retry
+const payload = { x402Version: 2, resource, accepted: requirement, payload: { transaction: signedTxHex } };
+const encoded = btoa(JSON.stringify(payload));
+const settled = await fetch('/api/x402/premium-content', {
+  headers: { 'payment-signature': encoded },
+});
+// settled.status === 200 → content unlocked
 ```
 
-### 3. Test Payment Flow
+### Settlement Approach
+
+The middleware broadcasts signed transactions **directly to the Stacks API** (`POST /v2/transactions`) rather than routing through an external facilitator service. This is:
+
+- **More reliable** — no dependency on third-party uptime
+- **Faster** — one fewer network hop
+- **Equivalent** — the Stacks API handles broadcast identically to how a facilitator would
+
+A reference facilitator implementation is included at `/api/facilitator/*` for testing and completeness.
+
+## Endpoints Using x402
+
+### `/api/x402/premium-content` (GET)
+- Price: 0.001 STX (1000 microSTX)
+- Returns: Platform analytics computed from real subscription data
+- Handler: `withX402Paywall()` middleware
+
+### `/api/x402/subscribe` (POST)
+- Price: Dynamic (matches the subscription plan amount)
+- Returns: Created subscription + payment receipt
+- Handler: Dynamically builds `withX402Paywall()` config from request body
+
+## Protocol Constants
 
 ```typescript
-// Create payment request
-const request = await x402Client.createPaymentRequest(0.0001, 'sBTC', address);
+// Networks (CAIP-2 format)
+STACKS_NETWORKS.TESTNET = 'stacks:2147483648'
+STACKS_NETWORKS.MAINNET = 'stacks:1'
 
-// Simulate payment (use testnet wallet)
-// ... wallet transaction ...
-
-// Verify payment
-const verified = await x402Client.verifyPayment(txId);
-console.log('Payment verified:', verified);
+// Headers
+X402_HEADERS.PAYMENT_REQUIRED  = 'payment-required'
+X402_HEADERS.PAYMENT_SIGNATURE = 'payment-signature'
+X402_HEADERS.PAYMENT_RESPONSE  = 'payment-response'
 ```
-
-## API Reference
-
-### X402Client
-
-```typescript
-class X402Client {
-  constructor(networkType: 'testnet' | 'mainnet');
-  
-  async verifyPayment(transactionId: string): Promise<boolean>;
-  
-  async createPaymentRequest(
-    amount: number,
-    currency: Currency,
-    recipient: string
-  ): Promise<PaymentRequest>;
-  
-  async getTransactionDetails(transactionId: string): Promise<any>;
-  
-  async verifyPaymentDetails(
-    transactionId: string,
-    expectedAmount: number,
-    expectedRecipient: string
-  ): Promise<PaymentVerification>;
-}
-```
-
-## Common Issues
-
-### Transaction Not Found
-
-```typescript
-// Wait for transaction to be broadcast
-await new Promise(resolve => setTimeout(resolve, 5000));
-const verified = await x402Client.verifyPayment(txId);
-```
-
-### Verification Failed
-
-Check:
-1. Transaction ID is correct
-2. Transaction is confirmed on-chain
-3. Amount matches expected value
-4. Recipient address is correct
-5. Network configuration is correct
-
-## Best Practices
-
-1. **Always verify payments on-chain** - Never trust client-side verification
-2. **Handle network delays** - Implement retry logic with exponential backoff
-3. **Log transaction IDs** - Keep audit trail of all payments
-4. **Test on testnet first** - Verify integration before mainnet deployment
-5. **Monitor gas fees** - STX transactions have variable fees
-
-## Additional Resources
-
-- [Stacks Documentation](https://docs.stacks.co)
-- [x402 Specification](https://github.com/x402-protocol)
-- [sBTC Guide](https://stacks.co/sbtc)
-- [Hiro API Documentation](https://docs.hiro.so/api)

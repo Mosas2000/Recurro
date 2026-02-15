@@ -35,8 +35,8 @@ export default function SubscribePage({
       );
       if (!res.ok) return;
       const all: Subscription[] = await res.json();
-      // "plans" are subscriptions with a placeholder subscriber (i.e. templates)
-      setPlans(all.filter((s) => s.subscriberAddress === 'placeholder'));
+      // "plans" are templates (not real subscriber subscriptions)
+      setPlans(all.filter((s) => s.subscriberAddress === 'placeholder' || s.subscriberAddress === 'plan_template'));
     } catch (err) {
       console.error('Failed to load plans:', err);
     } finally {

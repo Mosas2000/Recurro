@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface CreatePlanModalProps {
   creatorAddress: string;
@@ -14,15 +15,35 @@ interface CreatePlanModalProps {
 export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePlanModalProps) {
   const [planName, setPlanName] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<'sBTC' | 'STX'>('sBTC');
+  const [currency, setCurrency] = useState<'sBTC' | 'STX'>('STX');
   const [interval, setInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Close on ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  // Close on overlay click
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === overlayRef.current) onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!planName || !amount || parseFloat(amount) <= 0) {
-      alert('Please fill in all fields with valid values');
+
+    if (!planName.trim()) {
+      toast.error('Please enter a plan name');
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      toast.error('Please enter a valid amount');
       return;
     }
 
@@ -31,40 +52,47 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
     try {
       const response = await fetch('/api/subscriptions/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           creatorAddress,
-          subscriberAddress: 'placeholder',
+          subscriberAddress: 'plan_template',
           amount: parseFloat(amount),
           currency,
           interval,
-          planName,
+          planName: planName.trim(),
         }),
       });
 
       if (response.ok) {
+        toast.success(`"${planName}" plan created successfully`);
         onSuccess();
         onClose();
       } else {
-        alert('Failed to create plan');
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to create plan');
       }
     } catch (error) {
       console.error('Error creating plan:', error);
-      alert('Failed to create plan');
+      toast.error('Network error — please try again');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div
+      ref={overlayRef}
+      onClick={handleOverlayClick}
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create subscription plan"
+    >
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Subscription Plan</CardTitle>
           <CardDescription>
-            Set up a new recurring payment plan
+            Set up a new recurring payment plan for your subscribers
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -77,6 +105,7 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
                 onChange={(e) => setPlanName(e.target.value)}
                 placeholder="e.g. Pro Plan"
                 required
+                autoFocus
               />
             </div>
 
@@ -98,10 +127,10 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value as 'sBTC' | 'STX')}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-background"
               >
-                <option value="sBTC">sBTC</option>
                 <option value="STX">STX</option>
+                <option value="sBTC">sBTC</option>
               </select>
             </div>
 
@@ -110,7 +139,7 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
               <select
                 value={interval}
                 onChange={(e) => setInterval(e.target.value as 'monthly' | 'weekly' | 'daily')}
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-background"
               >
                 <option value="monthly">Monthly</option>
                 <option value="weekly">Weekly</option>
@@ -120,7 +149,7 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={isSubmitting} className="flex-1">
-                {isSubmitting ? 'Creating...' : 'Create Plan'}
+                {isSubmitting ? 'Creating…' : 'Create Plan'}
               </Button>
               <Button type="button" variant="outline" onClick={onClose} className="flex-1">
                 Cancel

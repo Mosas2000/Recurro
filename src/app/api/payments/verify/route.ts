@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { X402ServerVerifier } from '@/lib/x402/client';
-import { paymentsStore, subscriptionsStore, Payment, SubscriptionInterval } from '@/lib/db/schema';
+import { paymentsStore, subscriptionsStore, Payment } from '@/lib/db/schema';
+import type { SubscriptionInterval } from '@/lib/db/schema';
 
 const NETWORK = (process.env.STACKS_NETWORK as 'testnet' | 'mainnet') ?? 'testnet';
 const verifier = new X402ServerVerifier();
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   const payment: Payment = {
-    id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `pay_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
     subscriptionId,
     transactionId,
     amount,

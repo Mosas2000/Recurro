@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [walletAddress, setWalletAddress] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState({
     totalSubscribers: 0,
@@ -31,6 +32,7 @@ export default function DashboardPage() {
 
   // ---- fetch subscriptions from the SERVER via API ----
   const loadData = useCallback(async (address: string) => {
+    setIsLoading(true);
     try {
       const res = await fetch(
         `/api/subscriptions?creatorAddress=${encodeURIComponent(address)}`
@@ -39,22 +41,27 @@ export default function DashboardPage() {
 
       const allSubs: Subscription[] = await res.json();
       const activeSubs = allSubs.filter((s) => s.status === 'active');
-      const monthlyRevenue = activeSubs.reduce((sum, s) => {
-        const mult =
-          s.interval === 'weekly' ? 4 : s.interval === 'daily' ? 30 : 1;
-        return sum + s.amount * mult;
-      }, 0);
+      const realSubscribers = allSubs.filter(
+        (s) => s.subscriberAddress !== 'placeholder' && s.subscriberAddress !== 'plan_template'
+      );
+      const monthlyRevenue = realSubscribers
+        .filter((s) => s.status === 'active')
+        .reduce((sum, s) => {
+          const mult =
+            s.interval === 'weekly' ? 4 : s.interval === 'daily' ? 30 : 1;
+          return sum + s.amount * mult;
+        }, 0);
 
       setSubscriptions(allSubs);
       setStats({
-        totalSubscribers: allSubs.filter(
-          (s) => s.subscriberAddress !== 'placeholder'
-        ).length,
+        totalSubscribers: realSubscribers.length,
         monthlyRevenue,
         activeSubscriptions: activeSubs.length,
       });
     } catch (err) {
       console.error('Failed to load subscriptions:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -196,7 +203,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {stats.monthlyRevenue.toFixed(4)} sBTC
+                {stats.monthlyRevenue.toFixed(4)} STX
               </div>
             </CardContent>
           </Card>
@@ -217,7 +224,25 @@ export default function DashboardPage() {
         {/* plans & subscriptions */}
         <h2 className="text-2xl font-bold mb-4">Your Plans</h2>
 
-        {subscriptions.length === 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardHeader>
+                  <div className="h-5 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-1/2 mt-2" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded" />
+                    <div className="h-3 bg-muted rounded w-5/6" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : subscriptions.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               No plans yet. Create your first plan to get started.

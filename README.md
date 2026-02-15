@@ -4,200 +4,273 @@
 
 > 🏆 Built for the [DoraHacks x402 Stacks Challenge](https://dorahacks.io/hackathon/x402-stacks/detail)
 
-## Overview
+---
 
-Recurro is a decentralized subscription payment platform built on Stacks that enables creators to accept recurring STX and sBTC payments directly from subscribers — using the **x402 HTTP 402 payment protocol** with zero intermediaries.
+## What is Recurro?
 
-## x402-stacks Integration ⚡
+Recurro is a decentralized subscription payment platform built on the Stacks blockchain. Creators can set up recurring payment plans (daily / weekly / monthly) and share a subscribe link — subscribers pay directly from their Stacks wallet via the **x402 HTTP 402 payment protocol**, with every transaction settled on-chain.
+
+**No API keys. No payment processors. No middlemen.**
+
+---
+
+## x402-stacks Integration
 
 Recurro uses the **[x402-stacks](https://www.npmjs.com/package/x402-stacks)** SDK (v2.0.1) to implement real HTTP-level payments following the Coinbase x402 specification.
 
-### How x402 Works in Recurro
+### How the x402 Flow Works
 
 ```
-1. Client requests paywall-protected API endpoint
-2. Server responds HTTP 402 + payment-required header (base64 JSON)
-3. Client decodes requirements, signs STX transfer via wallet
-4. Client retries with payment-signature header (base64 signed tx)
-5. Server sends signed tx to facilitator /settle endpoint
-6. Facilitator broadcasts tx, waits for on-chain confirmation
-7. Server returns resource + payment-response header with tx details
+Client ──GET /api/x402/premium-content──▶ Server
+                                          │
+Client ◀──HTTP 402 + payment-required─────┘ (base64 JSON with payTo, amount, network)
+  │
+  │ User signs STX transfer in wallet popup
+  │
+Client ──GET + payment-signature header──▶ Server
+                                          │ Decodes base64 payload
+                                          │ Extracts signed tx hex
+                                          │ Broadcasts to Stacks API /v2/transactions
+                                          │ Resolves sender from mempool
+                                          │
+Client ◀──HTTP 200 + payment-response─────┘ (resource data + tx receipt)
 ```
 
 ### x402-Protected Endpoints
 
 | Endpoint | Method | Price | Description |
-|----------|--------|-------|-------------|
+|---|---|---|---|
 | `/api/x402/premium-content` | GET | 0.001 STX | Paywall-protected premium analytics |
 | `/api/x402/subscribe` | POST | Dynamic | x402-gated subscription with on-chain settlement |
 | `/api/x402/status` | GET | Free | x402 protocol configuration & status |
 
-### Key x402 Components
+### SDK Usage
 
-- **`src/lib/x402/middleware.ts`** — `withX402Paywall()` adapter for Next.js API routes using `X402PaymentVerifier`
-- **`src/lib/x402/client.ts`** — Browser-side `fetchWithX402()` and server-side `X402ServerVerifier`
-- **`src/lib/x402/types.ts`** — V2-compatible types (CAIP-2 networks, payment requirements, payloads)
-- **`src/app/x402/page.tsx`** — Interactive demo page with live 402 payment flow
+**Server-side** (`src/lib/x402/middleware.ts`):
+```ts
+import { STXtoMicroSTX, STACKS_NETWORKS, X402_HEADERS } from 'x402-stacks';
 
-### Protocol Details
+export const GET = withX402Paywall(
+  { amount: STXtoMicroSTX(0.001), payTo: 'ST…', network: 'testnet', asset: 'STX' },
+  async (req, settlement) => {
+    return NextResponse.json({ data: '…', paidBy: settlement?.payer });
+  }
+);
+```
 
-- **x402 Version**: 2 (Coinbase-compatible)
-- **Network**: `stacks:2147483648` (testnet) / `stacks:1` (mainnet)
-- **Headers**: `payment-required`, `payment-signature`, `payment-response`
-- **Facilitator**: Settles signed transactions on-chain via `/settle` endpoint
-- **SDK**: `x402-stacks@2.0.1` from npm
+**Client-side** (`src/lib/x402/client.ts`):
+```ts
+import { X402PaymentVerifier, STXtoMicroSTX, STACKS_NETWORKS, X402_HEADERS } from 'x402-stacks';
+```
 
-## Problem Statement
+The middleware broadcasts signed transactions directly to the Stacks API (`/v2/transactions`), which is more efficient than routing through an external facilitator. A local facilitator implementation is also included at `/api/facilitator/*` for reference and testing.
 
-Traditional subscription platforms charge 3-10% fees, control payment flows, and can freeze accounts. Cryptocurrency recurring payments lack proper infrastructure, requiring manual transactions each billing cycle.
-
-## Solution
-
-Recurro leverages the x402-stacks protocol to enable:
-- **HTTP 402 Payment Required** — native payment protocol using HTTP status codes
-- Automated recurring Bitcoin payments via STX / sBTC
-- Direct creator-to-subscriber payments (no middlemen)
-- On-chain settlement via the facilitator pattern
-- Zero platform fees
-
-## Technology Stack
-
-- **Frontend**: Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui
-- **Blockchain**: Stacks, STX, sBTC, x402-stacks SDK v2
-- **x402 Protocol**: `x402-stacks` npm package, facilitator pattern
-- **Wallet**: @stacks/connect v8 (Leather, Xverse)
-- **Network**: Stacks Testnet (demo), Mainnet (production)
-
-## Features
-
-- ⚡ **x402 Paywall** — API endpoints gated by HTTP 402 + on-chain STX payment
-- 🔗 **Wallet Connection** — Connect Leather/Xverse via @stacks/connect v8
-- 📊 **Creator Dashboard** — Create plans, view subscribers, track revenue
-- 💰 **Subscribe Flow** — Full x402 payment → facilitator settlement → subscription creation
-- 🎮 **Interactive Demo** — `/x402` page demonstrating the complete 402 flow
-- 📡 **Status API** — `/api/x402/status` showing live protocol configuration
+---
 
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────────┐     ┌──────────────┐
-│   Creator   │────▶│   Recurro        │────▶│  Stacks      │
-│   Wallet    │     │   (Next.js)      │     │  Network     │
-└─────────────┘     └──────────────────┘     └──────────────┘
-                            │                       ▲
-                    ┌───────┴───────┐               │
-                    ▼               ▼               │
-            ┌──────────┐   ┌──────────────┐        │
-            │ HTTP 402 │   │ x402-stacks  │────────┘
-            │ Paywall  │   │ Facilitator  │  /settle
-            └──────────┘   └──────────────┘
-                    ▲
-                    │ payment-signature
-            ┌──────────────┐
-            │  Subscriber  │
-            │  Wallet      │
-            └──────────────┘
+┌──────────────┐     ┌────────────────────────────────────┐     ┌──────────────┐
+│  Creator     │────▶│  Recurro (Next.js 16 + App Router) │────▶│  Stacks      │
+│  Wallet      │     │                                    │     │  Blockchain  │
+└──────────────┘     │  ┌──────────────┐ ┌─────────────┐  │     │  (Testnet)   │
+                     │  │ x402 Paywall │ │ Subscription │  │     └──────────────┘
+                     │  │ Middleware   │ │ Store        │  │           ▲
+                     │  └──────────────┘ └─────────────┘  │           │
+                     │  ┌──────────────┐ ┌─────────────┐  │           │
+                     │  │ Payment      │ │ x402-stacks │──┼───────────┘
+                     │  │ Processor    │ │ SDK v2.0.1  │  │  broadcast tx
+                     │  └──────────────┘ └─────────────┘  │
+                     └────────────────────────────────────┘
+                               ▲
+                     ┌─────────┴──────────┐
+                     │  Subscriber Wallet  │
+                     │  (Leather / Xverse) │
+                     └────────────────────┘
 ```
 
-## Setup Instructions
+### Key Components
+
+| Component | Location | Purpose |
+|---|---|---|
+| x402 Middleware | `src/lib/x402/middleware.ts` | `withX402Paywall()` — wraps API routes with 402 flow |
+| x402 Client | `src/lib/x402/client.ts` | Browser-side `handleX402Payment()` + server-side `X402ServerVerifier` |
+| x402 Types | `src/lib/x402/types.ts` | V2-compatible types (CAIP-2 networks, payment payloads) |
+| Wallet | `src/lib/stacks/wallet.ts` | @stacks/connect v8 — wallet connection + localStorage persistence |
+| Subscriptions API | `src/app/api/subscriptions/` | CRUD for plans and subscriptions |
+| Payment Verify | `src/app/api/payments/verify/` | On-chain tx verification via Hiro API |
+| Local Facilitator | `src/app/api/facilitator/` | Reference facilitator (`/settle`, `/verify`, `/supported`) |
+| Dashboard | `src/app/dashboard/` | Creator dashboard — plans, subscribers, revenue |
+| Subscribe Page | `src/app/subscribe/[address]/` | Public page for subscribers to browse and pay for plans |
+| Payments Page | `src/app/x402/` | Interactive x402 payment flow with progress stepper |
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 16.1.6, TypeScript, App Router
+- **Styling**: Tailwind CSS 4, shadcn/ui
+- **Blockchain**: Stacks Testnet, STX transfers
+- **x402 Protocol**: `x402-stacks@2.0.1` (npm)
+- **Wallet**: `@stacks/connect@8.2.4` (Leather, Xverse)
+- **Notifications**: Sonner toast library
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- npm or yarn
+- Node.js 18+
 - Leather or Xverse wallet browser extension
-- STX testnet tokens (get from [Stacks Faucet](https://explorer.stacks.co/sandbox/faucet?chain=testnet))
+- STX testnet tokens → [Stacks Faucet](https://explorer.stacks.co/sandbox/faucet?chain=testnet)
 
 ### Installation
 
-1. Clone the repository:
 ```bash
 git clone https://github.com/Mosas2000/Recurro.git
 cd Recurro
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Create `.env.local` file:
+### Environment Setup
+
+Create `.env.local`:
+
 ```env
 STACKS_NETWORK=testnet
 STACKS_API_URL=https://api.testnet.hiro.so
 NEXT_PUBLIC_STACKS_NETWORK=testnet
 NEXT_PUBLIC_STACKS_API_URL=https://api.testnet.hiro.so
 
-# x402-stacks configuration
-X402_FACILITATOR_URL=https://x402-backend-7eby.onrender.com
-NEXT_PUBLIC_X402_FACILITATOR_URL=https://x402-backend-7eby.onrender.com
+X402_FACILITATOR_URL=http://localhost:3000/api/facilitator
+NEXT_PUBLIC_X402_FACILITATOR_URL=http://localhost:3000/api/facilitator
 
-# Set to your testnet address to receive payments
 X402_CREATOR_ADDRESS=ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
 NEXT_PUBLIC_X402_CREATOR_ADDRESS=ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
 ```
 
-4. Run the development server:
+### Run
+
 ```bash
 npm run dev
+# Open http://localhost:3000
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000)
+---
 
-## Usage Guide
-
-### Try the x402 Demo
-
-1. Visit `/x402` — the interactive x402 demo page
-2. Connect your wallet
-3. Click "Try x402 Payment" to trigger the full HTTP 402 flow
-4. Sign the STX transfer in your wallet popup
-5. Watch the facilitator settle the transaction on-chain
+## Usage
 
 ### For Creators
 
-1. **Connect Wallet**: Click "Connect Wallet" and authorize Leather/Xverse
-2. **Create Plan**: Navigate to Dashboard → Create Plan
-3. **Configure Subscription**: Set plan name, amount (STX/sBTC), and interval
-4. **Share Link**: Share `/subscribe/[your-address]` with subscribers
+1. Connect your Leather or Xverse wallet on the **Dashboard**
+2. Click **Create Plan** — set name, amount (STX), and billing interval
+3. Copy your **Subscribe Link** and share it with your audience
 
 ### For Subscribers
 
-1. **Browse Plans**: Visit creator's subscription page
-2. **Connect Wallet**: Connect your Stacks wallet
-3. **Pay with x402**: Click "Pay with x402" — your wallet signs a STX transfer
-4. **Settlement**: The facilitator broadcasts the tx and confirms payment on-chain
+1. Visit a creator's subscribe page (`/subscribe/[address]`)
+2. Connect your wallet
+3. Click **Subscribe Now** — the x402 flow handles everything:
+   - Your wallet asks you to approve an STX transfer
+   - The signed transaction is broadcast to Stacks
+   - Subscription is activated on success
 
-## API Documentation
+### Try the x402 Payment Flow
+
+Visit `/x402` for an interactive demo of the full HTTP 402 payment cycle with a progress stepper.
+
+---
+
+## API Reference
+
+### Subscriptions
+
+```bash
+# List all subscriptions
+GET /api/subscriptions?creatorAddress=ST…
+
+# Create a plan
+POST /api/subscriptions/create
+{ "creatorAddress": "ST…", "subscriberAddress": "plan_template", "amount": 5, "currency": "STX", "interval": "monthly", "planName": "Pro" }
+
+# Update subscription status
+PUT /api/subscriptions/:id
+{ "status": "paused" }  # active | paused | cancelled
+```
 
 ### x402 Endpoints
 
 ```bash
-# Check x402 status (free)
-curl http://localhost:3000/api/x402/status
+# Check x402 configuration (free)
+GET /api/x402/status
 
-# Hit the paywall (returns 402 + payment requirements)
-curl -i http://localhost:3000/api/x402/premium-content
-# → HTTP 402 + payment-required header (base64 JSON)
+# Premium content (paywall — 0.001 STX)
+GET /api/x402/premium-content
+# → 402 without payment-signature header
+# → 200 with valid payment-signature header
 
-# With payment (after signing)
-curl -H "payment-signature: <base64_payload>" http://localhost:3000/api/x402/premium-content
-# → HTTP 200 + premium data + payment-response header
+# x402-gated subscription
+POST /api/x402/subscribe
+# → 402, then retried with signed payment
 ```
 
-See [docs/api.md](docs/api.md) for complete API reference.
+### Payment Verification
+
+```bash
+POST /api/payments/verify
+{ "transactionId": "0x…", "subscriptionId": "sub_…", "amount": 5, "currency": "STX" }
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── facilitator/     # Local x402 facilitator (settle/verify/supported)
+│   │   ├── payments/verify/  # On-chain tx verification
+│   │   ├── subscriptions/    # CRUD API for plans & subscriptions
+│   │   └── x402/            # x402-paywalled endpoints
+│   ├── dashboard/           # Creator dashboard
+│   ├── subscribe/           # Public subscribe page
+│   ├── x402/                # Interactive payment flow page
+│   └── page.tsx             # Landing page
+├── components/
+│   ├── ui/                  # shadcn/ui primitives
+│   ├── CreatePlanModal.tsx
+│   ├── SubscribeButton.tsx  # Full x402 payment flow
+│   ├── SubscriptionCard.tsx
+│   └── WalletConnect.tsx
+├── lib/
+│   ├── db/schema.ts         # TypeScript interfaces + in-memory stores
+│   ├── payments/processor.ts # Payment processing logic
+│   ├── stacks/              # Network config + wallet helpers
+│   └── x402/                # Middleware, client, types
+└── types/
+    └── wallet.ts
+```
+
+---
+
+## Design Decisions
+
+1. **Direct Stacks broadcast** over external facilitator — more reliable, no third-party dependency
+2. **In-memory storage** for hackathon demo — production would use PostgreSQL/Drizzle
+3. **STX-first** — all payments are STX transfers via `stx_transferStx`; sBTC support planned via SIP-010 token transfers
+4. **x402 V2 spec** — CAIP-2 network identifiers, base64-encoded headers, `X402_HEADERS` constants from the SDK
+
+---
 
 ## Links
 
-- **x402-stacks npm**: https://www.npmjs.com/package/x402-stacks
-- **x402Stacks GitHub**: https://github.com/tony1908/x402Stacks
-- **Stacks Testnet Faucet**: https://explorer.stacks.co/sandbox/faucet?chain=testnet
-- **Stacks Explorer**: https://explorer.stacks.co/
+- [x402-stacks on npm](https://www.npmjs.com/package/x402-stacks)
+- [x402Stacks GitHub](https://github.com/tony1908/x402Stacks)
+- [Stacks Testnet Faucet](https://explorer.stacks.co/sandbox/faucet?chain=testnet)
+- [Stacks Explorer](https://explorer.hiro.so/?chain=testnet)
 
 ## License
 
-MIT License
-
-## Acknowledgments
-
-Built for the [x402 Stacks Challenge](https://dorahacks.io/hackathon/x402-stacks/detail) hackathon. Powered by x402-stacks, STX, and sBTC.
+MIT

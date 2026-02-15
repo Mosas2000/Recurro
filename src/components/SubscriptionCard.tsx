@@ -45,7 +45,7 @@ export function SubscriptionCard({ subscription, onPause, onResume }: Subscripti
           {subscription.amount} {subscription.currency}
           <span className="text-muted-foreground font-normal text-sm"> / {subscription.interval}</span>
         </CardDescription>
-        {subscription.subscriberAddress !== 'placeholder' && (
+        {subscription.subscriberAddress !== 'placeholder' && subscription.subscriberAddress !== 'plan_template' && (
           <p className="text-xs text-muted-foreground mt-1">
             Subscriber: {truncateAddress(subscription.subscriberAddress)}
           </p>

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Wallet, Check, Loader2, Zap } from 'lucide-react';
+import { Check, Loader2, Zap } from 'lucide-react';
 import { getWalletConnection } from '@/lib/stacks/wallet';
+import { toast } from 'sonner';
 
 interface SubscribeButtonProps {
   planName: string;
@@ -30,7 +31,7 @@ export function SubscribeButton({
     const wallet = getWalletConnection();
 
     if (!wallet || !wallet.connected) {
-      alert('Please connect your wallet first');
+      toast.error('Please connect your wallet first');
       return;
     }
 
@@ -129,7 +130,7 @@ export function SubscribeButton({
     } catch (error: any) {
       console.error('x402 subscription error:', error);
       setPaymentStatus('');
-      alert(error.message || 'Failed to process payment');
+      toast.error(error.message || 'Failed to process payment');
     } finally {
       setIsProcessing(false);
     }

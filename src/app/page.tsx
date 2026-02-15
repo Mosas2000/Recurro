@@ -81,12 +81,12 @@ export default function HomePage() {
           <Card>
             <CardHeader>
               <Clock className="h-12 w-12 text-[var(--brand-accent)] mb-4" />
-              <CardTitle>Automated Recurring</CardTitle>
+              <CardTitle>Flexible Billing</CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Set up once and forget. Automatic payment processing for monthly,
-                weekly, or daily subscriptions.
+                Create daily, weekly, or monthly subscription plans.
+                Subscribers pay via x402 with a single wallet confirmation.
               </CardDescription>
             </CardContent>
           </Card>
@@ -123,8 +123,8 @@ export default function HomePage() {
               },
               {
                 step: '3',
-                title: 'Automatic Billing',
-                desc: 'Payment requirements are handled seamlessly through the x402 protocol. No manual invoicing needed.',
+                title: 'x402 Payment',
+                desc: 'Subscribers pay through the x402 protocol. Their wallet signs an STX transfer — no intermediaries involved.',
               },
               {
                 step: '4',

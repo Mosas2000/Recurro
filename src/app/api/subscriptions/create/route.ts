@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   
   const nextPaymentDate = calculateNextPaymentDate(interval as SubscriptionInterval);
   
