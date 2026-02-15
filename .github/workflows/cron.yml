@@ -1,0 +1,18 @@
+name: Scheduled Cron Job
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-check-due:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger check-due endpoint
+        run: |
+          curl -X GET "${{ secrets.VERCEL_URL }}/api/scheduler/check-due" \
+            --fail \
+            --silent \
+            --show-error \
+            --max-time 30
