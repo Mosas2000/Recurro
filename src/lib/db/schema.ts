@@ -6,7 +6,7 @@ export interface Subscription {
   creatorAddress: string;
   subscriberAddress: string;
   amount: number;
-  currency: 'sBTC' | 'STX';
+  currency: 'STX';
   interval: SubscriptionInterval;
   status: SubscriptionStatus;
   nextPaymentDate: number;
@@ -21,18 +21,10 @@ export interface Payment {
   subscriptionId: string;
   transactionId: string;
   amount: number;
-  currency: 'sBTC' | 'STX';
+  currency: 'STX';
   status: 'pending' | 'completed' | 'failed';
   timestamp: number;
 }
 
-export interface Creator {
-  address: string;
-  displayName: string;
-  description: string;
-  subscriptions: string[];
-}
-
 export const subscriptionsStore = new Map<string, Subscription>();
 export const paymentsStore = new Map<string, Payment>();
-export const creatorsStore = new Map<string, Creator>();

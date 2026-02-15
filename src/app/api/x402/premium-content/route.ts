@@ -67,8 +67,7 @@ export const GET = withX402Paywall(
           averageRevenue: activeSubs.length > 0
             ? `${(totalRevenue / activeSubs.length).toFixed(4)} STX`
             : '0 STX',
-          mostPopularCurrency: allSubs.filter((s) => s.currency === 'STX').length >=
-            allSubs.filter((s) => s.currency === 'sBTC').length ? 'STX' : 'sBTC',
+          mostPopularCurrency: 'STX',
           mostPopularInterval: (['monthly', 'weekly', 'daily'] as const)
             .map((i) => ({ interval: i, count: allSubs.filter((s) => s.interval === i).length }))
             .sort((a, b) => b.count - a.count)[0]?.interval || 'monthly',

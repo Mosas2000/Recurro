@@ -15,7 +15,7 @@ interface CreatePlanModalProps {
 export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePlanModalProps) {
   const [planName, setPlanName] = useState('');
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState<'sBTC' | 'STX'>('STX');
+  const currency = 'STX' as const;
   const [interval, setInterval] = useState<'monthly' | 'weekly' | 'daily'>('monthly');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -124,14 +124,9 @@ export function CreatePlanModal({ creatorAddress, onClose, onSuccess }: CreatePl
 
             <div>
               <label className="text-sm font-medium">Currency</label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value as 'sBTC' | 'STX')}
-                className="w-full p-2 border rounded-md bg-background"
-              >
-                <option value="STX">STX</option>
-                <option value="sBTC">sBTC</option>
-              </select>
+              <div className="w-full p-2 border rounded-md bg-muted/50 text-sm font-medium">
+                STX (Stacks Token)
+              </div>
             </div>
 
             <div>

@@ -60,7 +60,16 @@ export const GET = withX402Paywall(
 
 **Client-side** (`src/lib/x402/client.ts`):
 ```ts
-import { X402PaymentVerifier, STXtoMicroSTX, STACKS_NETWORKS, X402_HEADERS } from 'x402-stacks';
+import { performX402Payment } from '@/lib/x402/client';
+
+const { data } = await performX402Payment({
+  url: '/api/x402/subscribe',
+  method: 'POST',
+  body: { creatorAddress, subscriberAddress, amount, currency, interval, planName },
+  network: 'testnet',
+  onWalletPrompt: () => setStatus('Confirm in wallet…'),
+  onSettling: () => setStatus('Settling on-chain…'),
+});
 ```
 
 The middleware broadcasts signed transactions directly to the Stacks API (`/v2/transactions`), which is more efficient than routing through an external facilitator. A local facilitator implementation is also included at `/api/facilitator/*` for reference and testing.
@@ -94,11 +103,13 @@ The middleware broadcasts signed transactions directly to the Stacks API (`/v2/t
 | Component | Location | Purpose |
 |---|---|---|
 | x402 Middleware | `src/lib/x402/middleware.ts` | `withX402Paywall()` — wraps API routes with 402 flow |
-| x402 Client | `src/lib/x402/client.ts` | Browser-side `handleX402Payment()` + server-side `X402ServerVerifier` |
+| x402 Client | `src/lib/x402/client.ts` | Shared `performX402Payment()` — single reusable 402→sign→settle flow |
 | x402 Types | `src/lib/x402/types.ts` | V2-compatible types (CAIP-2 networks, payment payloads) |
 | Wallet | `src/lib/stacks/wallet.ts` | @stacks/connect v8 — wallet connection + localStorage persistence |
-| Subscriptions API | `src/app/api/subscriptions/` | CRUD for plans and subscriptions |
-| Payment Verify | `src/app/api/payments/verify/` | On-chain tx verification via Hiro API |
+| Payment Processor | `src/lib/payments/processor.ts` | Recurring payment utilities — `findDueSubscriptions()`, `getNextPaymentDate()` |
+| Scheduler | `src/app/api/scheduler/check-due/` | Finds & processes subscriptions due for renewal |
+| Subscriptions API | `src/app/api/subscriptions/` | CRUD for plans and subscriptions (with address auth) |
+| Payment Verify | `src/app/api/payments/verify/` | On-chain tx verification via Hiro API + x402-stacks verifier |
 | Local Facilitator | `src/app/api/facilitator/` | Reference facilitator (`/settle`, `/verify`, `/supported`) |
 | Dashboard | `src/app/dashboard/` | Creator dashboard — plans, subscribers, revenue |
 | Subscribe Page | `src/app/subscribe/[address]/` | Public page for subscribers to browse and pay for plans |
@@ -215,6 +226,18 @@ POST /api/x402/subscribe
 # → 402, then retried with signed payment
 ```
 
+### Recurring Payment Scheduler
+
+```bash
+# Check for due subscriptions
+GET /api/scheduler/check-due
+# → { dueCount, subscriptions, checkedAt }
+
+# Process due subscriptions (create pending payments, advance dates)
+POST /api/scheduler/check-due
+# → { processedCount, processed, processedAt }
+```
+
 ### Payment Verification
 
 ```bash
@@ -232,7 +255,8 @@ src/
 │   ├── api/
 │   │   ├── facilitator/     # Local x402 facilitator (settle/verify/supported)
 │   │   ├── payments/verify/  # On-chain tx verification
-│   │   ├── subscriptions/    # CRUD API for plans & subscriptions
+│   │   ├── scheduler/        # Recurring payment scheduler (check-due)
+│   │   ├── subscriptions/    # CRUD API for plans & subscriptions (with auth)
 │   │   └── x402/            # x402-paywalled endpoints
 │   ├── dashboard/           # Creator dashboard
 │   ├── subscribe/           # Public subscribe page
@@ -259,8 +283,11 @@ src/
 
 1. **Direct Stacks broadcast** over external facilitator — more reliable, no third-party dependency
 2. **In-memory storage** for hackathon demo — production would use PostgreSQL/Drizzle
-3. **STX-first** — all payments are STX transfers via `stx_transferStx`; sBTC support planned via SIP-010 token transfers
+3. **STX-first** — all payments are STX transfers via `stx_transferStx`
 4. **x402 V2 spec** — CAIP-2 network identifiers, base64-encoded headers, `X402_HEADERS` constants from the SDK
+5. **Shared x402 flow** — single `performX402Payment()` function used by all payment UI, eliminating duplication
+6. **Recurring scheduler** — API-driven with `findDueSubscriptions()` + `advanceSubscription()`, ready for Vercel Cron in production
+7. **Address-based auth** — mutation routes require wallet address verification to prevent unauthorized changes
 
 ---
 

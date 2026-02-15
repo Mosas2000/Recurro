@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscriptionsStore, Subscription, SubscriptionInterval } from '@/lib/db/schema';
+import { getNextPaymentDate } from '@/lib/payments/processor';
+
+/** Validate a Stacks address format (testnet ST… or mainnet SP…). */
+function isValidStacksAddress(address: string): boolean {
+  return /^S[PT][A-Z0-9]{38,40}$/i.test(address);
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -13,6 +19,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!isValidStacksAddress(creatorAddress) || !isValidStacksAddress(subscriberAddress)) {
+    return NextResponse.json(
+      { error: 'Invalid Stacks address format' },
+      { status: 400 }
+    );
+  }
+
   if (amount <= 0) {
     return NextResponse.json(
       { error: 'Amount must be greater than 0' },
@@ -22,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   
-  const nextPaymentDate = calculateNextPaymentDate(interval as SubscriptionInterval);
+  const nextPaymentDate = getNextPaymentDate(interval as SubscriptionInterval);
   
   const subscription: Subscription = {
     id: subscriptionId,
@@ -42,20 +55,4 @@ export async function POST(request: NextRequest) {
   subscriptionsStore.set(subscriptionId, subscription);
 
   return NextResponse.json(subscription, { status: 201 });
-}
-
-function calculateNextPaymentDate(interval: SubscriptionInterval): number {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  
-  switch (interval) {
-    case 'daily':
-      return now + day;
-    case 'weekly':
-      return now + (7 * day);
-    case 'monthly':
-      return now + (30 * day);
-    default:
-      return now + (30 * day);
-  }
 }

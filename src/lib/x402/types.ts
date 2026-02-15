@@ -9,8 +9,8 @@
  */
 
 /** Token types accepted for payment */
-export type TokenType = 'STX' | 'sBTC';
-export type Currency = 'sBTC' | 'STX';
+export type TokenType = 'STX';
+export type Currency = 'STX';
 
 /** Payment requirement returned in a 402 response */
 export interface PaymentRequirement {
@@ -42,15 +42,6 @@ export interface PaymentPayload {
   payload: {
     transaction: string; // signed tx hex (NOT broadcast)
   };
-}
-
-/** Settlement result from the facilitator */
-export interface SettlementResult {
-  success: boolean;
-  payer?: string;
-  transaction?: string;
-  network?: string;
-  errorReason?: string;
 }
 
 /** Configuration for x402 paywall on a Next.js API route */

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withX402Paywall, STXtoMicroSTX } from '@/lib/x402/middleware';
 import { subscriptionsStore, paymentsStore } from '@/lib/db/schema';
 import type { Subscription, Payment } from '@/lib/db/schema';
+import { getNextPaymentDate } from '@/lib/payments/processor';
 
 const NETWORK = (process.env.STACKS_NETWORK as 'testnet' | 'mainnet') ?? 'testnet';
 
@@ -57,14 +58,8 @@ export async function POST(req: NextRequest) {
       // Payment verified! Create the subscription
       const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Date.now();
-      const day = 24 * 60 * 60 * 1000;
 
-      const nextPaymentDate =
-        interval === 'daily'
-          ? now + day
-          : interval === 'weekly'
-            ? now + 7 * day
-            : now + 30 * day;
+      const nextPaymentDate = getNextPaymentDate(interval);
 
       const subscription: Subscription = {
         id: subscriptionId,

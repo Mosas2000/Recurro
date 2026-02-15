@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -100,7 +101,7 @@ export default function DashboardPage() {
   const handlePause = async (id: string) => {
     await fetch(`/api/subscriptions/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': walletAddress },
       body: JSON.stringify({ status: 'paused' }),
     });
     loadData(walletAddress);
@@ -109,7 +110,7 @@ export default function DashboardPage() {
   const handleResume = async (id: string) => {
     await fetch(`/api/subscriptions/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-wallet-address': walletAddress },
       body: JSON.stringify({ status: 'active' }),
     });
     loadData(walletAddress);
@@ -285,8 +286,8 @@ function Header({
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-bold">
-          Recurro
+        <Link href="/">
+          <Image src="/logo.png" alt="Recurro" width={120} height={40} className="h-9 w-auto" />
         </Link>
         <WalletConnect onConnectionChange={onConnectionChange} />
       </div>

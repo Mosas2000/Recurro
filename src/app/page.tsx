@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bitcoin, Clock, Shield, Zap } from 'lucide-react';
@@ -8,7 +9,9 @@ export default function HomePage() {
     <div className="min-h-screen bg-[var(--background)]">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-2xl font-bold">Recurro</div>
+          <Link href="/">
+            <Image src="/logo.png" alt="Recurro" width={120} height={40} className="h-9 w-auto" priority />
+          </Link>
           <nav className="flex gap-4">
             <Link href="/x402">
               <Button variant="ghost">Payments</Button>

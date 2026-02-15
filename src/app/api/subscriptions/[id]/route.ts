@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { subscriptionsStore } from '@/lib/db/schema';
 
+/** Validate a Stacks address format (testnet ST… or mainnet SP…). */
+function isValidStacksAddress(address: string): boolean {
+  return /^S[PT][A-Z0-9]{38,40}$/i.test(address);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -31,6 +36,26 @@ export async function PUT(
     return NextResponse.json(
       { error: 'Subscription not found' },
       { status: 404 }
+    );
+  }
+
+  // --- Auth: require the caller to identify as the creator or subscriber ---
+  const walletAddress = request.headers.get('x-wallet-address') ?? body.walletAddress;
+
+  if (!walletAddress || !isValidStacksAddress(walletAddress)) {
+    return NextResponse.json(
+      { error: 'Missing or invalid x-wallet-address header' },
+      { status: 401 },
+    );
+  }
+
+  if (
+    walletAddress !== subscription.creatorAddress &&
+    walletAddress !== subscription.subscriberAddress
+  ) {
+    return NextResponse.json(
+      { error: 'You are not authorised to modify this subscription' },
+      { status: 403 },
     );
   }
 

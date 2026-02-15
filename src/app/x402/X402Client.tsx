@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { WalletConnect } from '@/components/WalletConnect';
 import { getWalletConnection } from '@/lib/stacks/wallet';
+import { performX402Payment } from '@/lib/x402/client';
 import {
   Zap,
   Shield,
@@ -59,50 +61,18 @@ export default function PaymentsPage() {
     setStep(1);
 
     try {
-      const response = await fetch('/api/x402/premium-content');
-      if (response.status !== 402) {
-        throw new Error(`Expected payment request but got ${response.status}`);
-      }
-      const requirements = await response.json();
-
-      setStep(2);
-      const requirement = requirements.accepts?.[0];
-      if (!requirement) throw new Error('No payment requirements received');
-
       const wallet = getWalletConnection();
       if (!wallet?.connected) throw new Error('Wallet not connected');
 
-      const { request: walletRequest } = await import('@stacks/connect');
-      const result: any = await walletRequest('stx_transferStx', {
-        recipient: requirement.payTo,
-        amount: requirement.amount,
-        memo: `x402:recurro:${Date.now().toString(36)}`.substring(0, 34),
+      const { data } = await performX402Payment({
+        url: '/api/x402/premium-content',
+        method: 'GET',
         network: wallet.network === 'testnet' ? 'testnet' : 'mainnet',
+        onPaymentRequired: () => {},       // Already at step 1
+        onWalletPrompt: () => setStep(2),  // Confirm in wallet
+        onSettling: () => setStep(3),       // On-chain settlement
       });
 
-      const signedTxHex: string =
-        result.transaction ?? result.txRaw ?? result.result?.transaction ?? '';
-      if (!signedTxHex) throw new Error('Wallet did not return a signed transaction');
-
-      setStep(3);
-      const paymentPayload = {
-        x402Version: 2,
-        resource: requirements.resource,
-        accepted: requirement,
-        payload: { transaction: signedTxHex },
-      };
-
-      const encoded = btoa(JSON.stringify(paymentPayload));
-      const settled = await fetch('/api/x402/premium-content', {
-        headers: { 'payment-signature': encoded },
-      });
-
-      if (!settled.ok) {
-        const errBody = await settled.json().catch(() => ({}));
-        throw new Error(errBody.message || `Payment could not be processed (${settled.status})`);
-      }
-
-      const data: PremiumResult = await settled.json();
       setPaymentResult(data);
       setStep(4);
     } catch (err: any) {
@@ -124,8 +94,8 @@ export default function PaymentsPage() {
     <div className="min-h-screen bg-[var(--background)]">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold">
-            Recurro
+          <Link href="/">
+            <Image src="/logo.png" alt="Recurro" width={120} height={40} className="h-9 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/dashboard">
@@ -463,7 +433,7 @@ export default function PaymentsPage() {
             >
               x402-stacks
             </a>{' '}
-            on Stacks blockchain. Powered by sBTC &amp; STX.
+            on Stacks blockchain. Powered by STX.
           </p>
         </div>
       </footer>

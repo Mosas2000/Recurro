@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { X402ServerVerifier } from '@/lib/x402/client';
+import { X402PaymentVerifier } from 'x402-stacks';
 import { paymentsStore, subscriptionsStore, Payment } from '@/lib/db/schema';
-import type { SubscriptionInterval } from '@/lib/db/schema';
+import { getNextPaymentDate } from '@/lib/payments/processor';
 
 const NETWORK = (process.env.STACKS_NETWORK as 'testnet' | 'mainnet') ?? 'testnet';
-const verifier = new X402ServerVerifier();
+const FACILITATOR_URL =
+  process.env.X402_FACILITATOR_URL ??
+  process.env.NEXT_PUBLIC_X402_FACILITATOR_URL ??
+  'http://localhost:3000/api/facilitator';
+const verifier = new X402PaymentVerifier(FACILITATOR_URL);
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -27,10 +31,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Use the real x402-stacks facilitator to check supported networks
+  // Use x402-stacks' X402PaymentVerifier to check facilitator status
   let facilitatorReachable = false;
   try {
-    const supported = await verifier.getSupported();
+    await verifier.getSupported();
     facilitatorReachable = true;
   } catch {
     facilitatorReachable = false;
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
   paymentsStore.set(payment.id, payment);
 
   if (verified) {
-    const nextPaymentDate = calculateNextPaymentDate(subscription.interval);
+    const nextPaymentDate = getNextPaymentDate(subscription.interval);
     const updatedSubscription = {
       ...subscription,
       nextPaymentDate,
@@ -81,20 +85,4 @@ export async function POST(request: NextRequest) {
       protocol: 'x402-stacks v2',
     },
   });
-}
-
-function calculateNextPaymentDate(interval: SubscriptionInterval): number {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  
-  switch (interval) {
-    case 'daily':
-      return now + day;
-    case 'weekly':
-      return now + (7 * day);
-    case 'monthly':
-      return now + (30 * day);
-    default:
-      return now + (30 * day);
-  }
 }
